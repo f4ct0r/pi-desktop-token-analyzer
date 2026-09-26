@@ -125,6 +125,141 @@ function emptyRow(tbody, columns, message) {
   tbody.replaceChildren(tr);
 }
 
+// --- tooltip -------------------------------------------------------------
+
+/**
+ * One floating tooltip for the whole page.
+ *
+ * A native `title` is too coarse for what this dashboard has to say: a daily
+ * bar carries a breakdown, and an abbreviated `12.3M` has to be able to answer
+ * "exactly how much". One shared node also keeps hover cheap — the content is
+ * built once per anchor and reused while the pointer stays inside it.
+ *
+ * Fixed positioning means the coordinates are viewport-relative, so no scroll
+ * or ancestor-offset math is needed; the clamp is what keeps it inside a narrow
+ * docked panel.
+ */
+let tipNode = null;
+let tipOwner = null;
+let activeBar = null;
+
+function tipElement() {
+  if (tipNode) return tipNode;
+  tipNode = document.createElement('div');
+  tipNode.className = 'tip';
+  tipNode.setAttribute('role', 'tooltip');
+  tipNode.hidden = true;
+  document.body.appendChild(tipNode);
+  return tipNode;
+}
+
+/**
+ * Build tooltip rows from `{head}` captions and `{k, v}` pairs. Text is
+ * assigned, never interpolated into markup, so a model or session title can
+ * never become HTML here.
+ */
+function fillTip(node, spec) {
+  node.replaceChildren(
+    ...spec.map((entry) => {
+      const row = document.createElement('div');
+      if (entry.head) {
+        row.className = 'tip-h';
+        row.textContent = entry.head;
+        return row;
+      }
+      row.className = 'tip-r';
+      const k = document.createElement('span');
+      k.className = 'tip-k';
+      k.textContent = entry.k;
+      const v = document.createElement('span');
+      v.className = 'tip-v';
+      v.textContent = entry.v;
+      row.append(k, v);
+      return row;
+    }),
+  );
+}
+
+function placeTip(node, anchor) {
+  const anchorBox = anchor.getBoundingClientRect();
+  const tipBox = node.getBoundingClientRect();
+  const margin = 6;
+  const gap = 8;
+  let left = anchorBox.left + anchorBox.width / 2 - tipBox.width / 2;
+  left = Math.max(margin, Math.min(left, window.innerWidth - tipBox.width - margin));
+  // Above the anchor when there is room, below it when the anchor sits near the
+  // top of the viewport, so the tooltip is never clipped away.
+  let top = anchorBox.top - tipBox.height - gap;
+  if (top < margin) top = anchorBox.bottom + gap;
+  node.style.left = `${Math.round(left)}px`;
+  node.style.top = `${Math.round(top)}px`;
+}
+
+function showTip(anchor, spec) {
+  if (!anchor || !spec) return;
+  const node = tipElement();
+  if (tipOwner !== anchor) {
+    fillTip(node, spec);
+    tipOwner = anchor;
+  }
+  node.hidden = false;
+  placeTip(node, anchor);
+}
+
+function hideTip(anchor) {
+  if (anchor && tipOwner !== anchor) return;
+  if (tipNode) tipNode.hidden = true;
+  tipOwner = null;
+}
+
+/** Attach tooltip rows to an element. */
+function withTip(anchor, spec) {
+  anchor.addEventListener('mouseenter', () => showTip(anchor, spec));
+  anchor.addEventListener('mouseleave', () => hideTip(anchor));
+  return anchor;
+}
+
+/** Highlight the bar under the pointer, and only ever one of them. */
+function setActiveBar(bar) {
+  if (activeBar === bar) return;
+  if (activeBar) activeBar.classList.remove('is-active');
+  activeBar = bar;
+  if (bar) bar.classList.add('is-active');
+}
+
+/** What one day of the chart says: the total, then where it came from. */
+function dayTipSpec(row) {
+  const spec = [
+    { head: row.date },
+    { k: '总用量', v: `${formatFull(row.total)} tokens` },
+    { k: '输入', v: formatFull(row.input) },
+    { k: '输出', v: formatFull(row.output) },
+    { k: '缓存', v: formatFull(row.cacheRead + row.cacheWrite) },
+  ];
+  // Reasoning overlaps output, so it stays a note and never a column.
+  if (row.reasoning > 0) spec.push({ k: '其中推理', v: formatFull(row.reasoning) });
+  spec.push({ k: '轮次', v: formatFull(row.turns) });
+  return spec;
+}
+
+/**
+ * A token cell: an abbreviated number with the exact one in the tooltip.
+ *
+ * A usage column only has room for `12.3M`; the exact figure is what anyone
+ * comparing two providers actually wants, so it stays one hover away. The
+ * `aria-label` carries the same text, since assistive tech would otherwise
+ * read only the abbreviation.
+ */
+function tokenCell(value, label = '总用量', className = 'col-num') {
+  const td = document.createElement('td');
+  td.className = className;
+  td.textContent = formatTokens(value);
+  const exact = `${formatFull(value)} tokens`;
+  td.setAttribute('aria-label', `${label} ${exact}`);
+  return withTip(td, [{ k: label, v: exact }]);
+}
+
+// --- DOM helpers --------------------------------------------------------
 /** A share cell: a number plus a proportional bar, right-aligned together. */
 function shareCell(share) {
   const td = document.createElement('td');
@@ -208,20 +343,40 @@ function renderChart(data) {
     empty.textContent = '暂无数据';
     el.chart.replaceChildren(empty);
     text(el.dailyNote, '');
+    setActiveBar(null);
+    hideTip();
     return;
   }
-  const bars = daily.map((row) => {
+  // The tooltip rows are built once per render, not once per mousemove.
+  const specs = daily.map(dayTipSpec);
+  const bars = daily.map((row, index) => {
     const bar = document.createElement('div');
     const total = Number(row.total) || 0;
     bar.className = total > 0 ? 'bar' : 'bar is-zero';
-    // A floor of 2% keeps a real-but-tiny day visible next to a huge one; the
-    // value itself is still carried by the tooltip, not the height.
+    bar.dataset.index = String(index);
+    // The bar element spans the full column and only the inner fill carries
+    // the value, so a 2%-tall day is as easy to hover as the peak. A floor of
+    // 2% keeps a real-but-tiny day visible next to a huge one.
     const ratio = total > 0 ? Math.max(0.02, total / peak) : 0.02;
-    bar.style.height = `${ratio * 100}%`;
-    bar.title = `${row.date} · ${formatFull(total)} tokens`;
+    const fill = document.createElement('div');
+    fill.className = 'bar-fill';
+    fill.style.height = `${ratio * 100}%`;
+    bar.appendChild(fill);
     return bar;
   });
   el.chart.replaceChildren(...bars);
+  // One delegated listener pair for the whole chart: 30 pairs of listeners
+  // would rebuild the same tooltip 30 times over a full sweep of the bars.
+  el.chart.onmousemove = (event) => {
+    const bar = event.target.closest?.('.bar');
+    if (!bar) return;
+    setActiveBar(bar);
+    showTip(bar, specs[Number(bar.dataset.index)]);
+  };
+  el.chart.onmouseleave = () => {
+    setActiveBar(null);
+    hideTip();
+  };
   const first = daily[0];
   const last = daily[daily.length - 1];
   text(el.dailyNote, `${formatDate(first.date)} – ${formatDate(last.date)} · 峰值 ${formatTokens(peak)}`);
@@ -233,7 +388,6 @@ function renderModels(data) {
   if (rows.length === 0) {
     emptyRow(el.modelsBody, 6, '暂无数据');
     text(el.modelsNote, '');
-    return;
   }
   const body = rows.map((row) => {
     const tr = document.createElement('tr');
@@ -254,10 +408,10 @@ function renderModels(data) {
     name.append(label, sub);
     tr.append(
       name,
-      cell(formatFull(row.total), 'col-num'),
-      cell(formatFull(row.input), 'col-num'),
-      cell(formatFull(row.output), 'col-num'),
-      cell(formatFull(row.cacheRead + row.cacheWrite), 'col-num'),
+      tokenCell(row.total, '总用量'),
+      tokenCell(row.input, '输入'),
+      tokenCell(row.output, '输出'),
+      tokenCell(row.cacheRead + row.cacheWrite, '缓存'),
       shareCell(row.share),
     );
     return tr;
@@ -288,7 +442,7 @@ function renderProjects(data) {
     name.append(label);
     tr.append(
       name,
-      cell(formatFull(row.total), 'col-num'),
+      tokenCell(row.total, '总用量'),
       cell(formatFull(row.turns), 'col-num'),
       shareCell(row.share),
     );
@@ -316,7 +470,7 @@ function renderSessions(data) {
     sub.className = 'row-sub';
     sub.textContent = row.lastEndedAt ? `最近 ${formatTime(row.lastEndedAt)}` : '';
     name.append(label, sub);
-    tr.append(name, cell(formatFull(row.total), 'col-num'), cell(formatFull(row.turns), 'col-num'));
+    tr.append(name, tokenCell(row.total, '总用量'), cell(formatFull(row.turns), 'col-num'));
     return tr;
   });
   el.sessionsBody.replaceChildren(...body);
