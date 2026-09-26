@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Packaging output (`pi-plugin pack` writes .piplug bundles)
+dist/
+*.piplug
+
+# Host-side scratch
+.pi-desktop/
+
+# Local noise
+.DS_Store
+*.log
+coverage/
