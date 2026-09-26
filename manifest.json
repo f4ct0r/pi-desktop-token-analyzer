@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "id": "dev.tokenanalyzer",
+  "name": "Token Analyzer",
+  "version": "0.1.0",
+  "description": "分析 PI-Desktop 的 token 用量：侧边栏常驻紧凑用量条，点击展开完整 dashboard（按天 / 近 7 天 / 近 30 天 / 每模型用量）",
+  "author": "PI-Desktop",
+  "main": "main.js",
+  "i18n": {
+    "en": {
+      "name": "Token Analyzer",
+      "description": "Analyze PI-Desktop token usage: a compact readout in the side panel that expands into a full dashboard."
+    },
+    "zh-CN": {
+      "name": "Token 用量分析",
+      "description": "分析 PI-Desktop 的 token 用量：侧边栏常驻紧凑用量条，点击展开完整 dashboard。"
+    }
+  },
+  "contributes": {
+    "views": [
+      {
+        "id": "usage",
+        "title": {
+          "en": "Token Usage",
+          "zh-CN": "Token 用量"
+        },
+        "icon": "target",
+        "entry": "views/usage.html",
+        "order": 20
+      }
+    ],
+    "commands": [
+      {
+        "id": "token-usage.open",
+        "title": "Token Usage: Open Dashboard",
+        "keywords": ["token", "usage", "tokens", "用量", "统计", "dashboard"],
+        "category": "Token Usage"
+      },
+      {
+        "id": "token-usage.refresh",
+        "title": "Token Usage: Refresh",
+        "keywords": ["token", "usage", "refresh", "刷新"],
+        "category": "Token Usage"
+      }
+    ],
+    "settings": [
+      {
+        "key": "scope",
+        "type": "select",
+        "default": "global",
+        "title": "统计范围",
+        "description": "global = 全部项目累计；project = 仅当前打开的项目",
+        "enum": [
+          { "label": "全部项目", "value": "global" },
+          { "label": "仅当前项目", "value": "project" }
+        ]
+      },
+      {
+        "key": "includeCache",
+        "type": "boolean",
+        "default": true,
+        "title": "总用量计入缓存 token",
+        "description": "关闭后总用量只统计 input + output + reasoning"
+      },
+      {
+        "key": "topModels",
+        "type": "number",
+        "default": 8,
+        "title": "每模型列表显示条数",
+        "description": "dashboard 中「每模型用量」最多显示多少行"
+      }
+    ]
+  },
+  "permissions": ["ui.view", "usage.read", "models.list", "desktop.control"],
+  "engines": {
+    "piDesktop": ">=0.15.0"
+  },
+  "activationEvents": ["onStartup"]
+}

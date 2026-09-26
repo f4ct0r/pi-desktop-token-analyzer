@@ -1,0 +1,495 @@
+/*
+ * Token Analyzer view styles.
+ *
+ * The page owns its whole surface. `--pi-plugin-titlebar-height` is published
+ * by the host preload (0px docked, 46px in a detached panel window), so the
+ * same file lays out correctly in both placements without a media query.
+ *
+ * Light/dark comes from the host's own theme, delivered on the
+ * `appearance:changed` event and published as `data-base` on <html>. A plugin
+ * theme's base palette arrives the same way, so a plugin that redefines the
+ * host palette restyles this page without shipping a stylesheet of its own.
+ */
+
+:root {
+  color-scheme: dark;
+  --bg: #181818;
+  --surface: #212121;
+  --surface-hover: color-mix(in oklab, #ffffff 6%, transparent);
+  --fg: #ffffff;
+  --secondary: color-mix(in oklab, #ffffff 70%, transparent);
+  --muted: color-mix(in oklab, #ffffff 52%, transparent);
+  --border: color-mix(in oklab, #ffffff 10%, transparent);
+  --accent: #ffffff;
+  --positive: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+}
+
+:root[data-base="light"] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #f9f9f9;
+  --surface-hover: color-mix(in oklab, #1a1c1f 5%, transparent);
+  --fg: #1a1c1f;
+  --secondary: color-mix(in oklab, #1a1c1f 74%, transparent);
+  --muted: #5d5d5d;
+  --border: color-mix(in oklab, #1a1c1f 10%, transparent);
+  --accent: #1a1c1f;
+  --positive: #16a34a;
+  --warning: #b45309;
+  --danger: #dc2626;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * The column owns the scroll, not the root viewport: the host preload applies
+ * its own scrollbar contract, and a duplicate root reservation shows up as an
+ * empty rail on Windows.
+ */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding-top: var(--pi-plugin-titlebar-height, 0px);
+}
+
+/* ---------- dashboard ---------------------------------------------------- */
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.dashboard[hidden] {
+  display: none;
+}
+
+.dash-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 12px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dash-head-main {
+  min-width: 0;
+}
+
+.dash-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dash-sub {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.dash-head-actions {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--secondary);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  border-color: var(--border);
+  background: var(--surface-hover);
+  color: var(--fg);
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.dash-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 12px 12px;
+}
+
+/* ---------- stat tiles --------------------------------------------------- */
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.stat {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.stat-k {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.stat-v {
+  display: block;
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-sub {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- cards -------------------------------------------------------- */
+
+.card {
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.card-note {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* ---------- daily chart -------------------------------------------------- */
+
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 72px;
+  padding: 10px 10px 8px;
+}
+
+.bar {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 2px;
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in oklab, var(--accent) 45%, transparent);
+}
+
+.bar.is-zero {
+  background: var(--border);
+}
+
+.bar:hover {
+  background: var(--accent);
+}
+
+.chart-empty {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* ---------- tables ------------------------------------------------------- */
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table .col-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table .col-name {
+  max-width: 190px;
+}
+
+.row-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-sub {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.share {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.share-bar {
+  width: 34px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.share-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.empty-row td {
+  color: var(--muted);
+  text-align: center;
+  padding: 14px 8px;
+}
+
+.footnote {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+/* ---------- compact bar --------------------------------------------------
+ *
+ * The persistent readout. It sits at the bottom of the column in normal flow
+ * so the host's measured-rect bounds tracking needs no special case, and it
+ * stays visible in both modes — expanding the dashboard never hides the
+ * numbers the strip was opened for.
+ */
+
+.compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.compact:hover {
+  background: var(--surface-hover);
+}
+
+.compact:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.compact-label {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.compact-title {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.compact-scope {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.compact-stats {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.compact-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.compact-k {
+  color: var(--muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.compact-v {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.compact-stat-total .compact-v {
+  font-size: 13px;
+}
+
+.compact-caret {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--muted);
+  transition: transform 120ms ease;
+}
+
+body[data-mode="expanded"] .compact-caret {
+  transform: rotate(180deg);
+}
+
+/*
+ * A narrow panel tightens the strip rather than dropping a column. All four
+ * windows are the point of the readout, and a silently missing "30 天" reads
+ * as "no usage" instead of "not enough width". The strip scrolls horizontally
+ * instead, so every number stays reachable at any panel width.
+ */
+@media (max-width: 320px) {
+  .compact {
+    gap: 6px;
+  }
+
+  .compact-stats {
+    gap: 7px;
+    overflow-x: auto;
+  }
+
+  .compact-label {
+    display: none;
+  }
+}
+
+/* ---------- status ------------------------------------------------------- */
+
+.status {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.status[hidden] {
+  display: none;
+}
+
+.status.is-error {
+  color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* `margin-top: auto` is what pins the strip to the bottom of the column. In
+ * compact mode the dashboard is the only sibling and it is hidden, so without
+ * this the strip would sit at the very top with the whole panel empty below
+ * it. In expanded mode it pushes the scrolling dashboard above itself instead. */
+.compact {
+  margin-top: auto;
+}

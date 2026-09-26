@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Token Usage</title>
+    <link rel="stylesheet" href="./usage.css" />
+  </head>
+  <body data-mode="compact">
+    <!--
+      A docked work-panel view is the same isolated page as a `ui.panel`
+      window, composited inside the host window instead of a separate one, so
+      it gets no window-control capsule and no 46px drag band. Read
+      `--pi-plugin-titlebar-height` rather than hard-coding a value: the host
+      publishes 0px here and 46px in a detached panel window, so this one entry
+      file lays out correctly in both placements.
+    -->
+    <main class="app" id="app">
+      <section class="dashboard" id="dashboard" aria-labelledby="dash-title" hidden>
+        <header class="dash-head">
+          <div class="dash-head-main">
+            <h1 class="dash-title" id="dash-title">Token 用量</h1>
+            <p class="dash-sub" id="dash-sub">—</p>
+          </div>
+          <div class="dash-head-actions">
+            <button
+              type="button"
+              class="icon-btn"
+              id="refresh"
+              title="刷新"
+              aria-label="刷新"
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                <path
+                  d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="icon-btn"
+              id="collapse"
+              title="收起"
+              aria-label="收起"
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                <path
+                  d="M4 10l4-4 4 4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <div class="dash-scroll">
+          <div class="stat-row" id="stat-row"></div>
+
+          <section class="card" aria-labelledby="daily-title">
+            <div class="card-head">
+              <h2 class="card-title" id="daily-title">近 30 天</h2>
+              <span class="card-note" id="daily-note"></span>
+            </div>
+            <div class="chart" id="chart" role="img" aria-label="近 30 天每日 token 用量"></div>
+          </section>
+
+          <section class="card" aria-labelledby="models-title">
+            <div class="card-head">
+              <h2 class="card-title" id="models-title">每模型用量</h2>
+              <span class="card-note" id="models-note"></span>
+            </div>
+            <div class="table-wrap">
+              <table class="table" id="models-table">
+                <thead>
+                  <tr>
+                    <th scope="col" class="col-name">模型</th>
+                    <th scope="col" class="col-num">总用量</th>
+                    <th scope="col" class="col-num">输入</th>
+                    <th scope="col" class="col-num">输出</th>
+                    <th scope="col" class="col-num">缓存</th>
+                    <th scope="col" class="col-num">占比</th>
+                  </tr>
+                </thead>
+                <tbody id="models-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="projects-title">
+            <div class="card-head">
+              <h2 class="card-title" id="projects-title">按项目</h2>
+              <span class="card-note" id="projects-note"></span>
+            </div>
+            <div class="table-wrap">
+              <table class="table" id="projects-table">
+                <thead>
+                  <tr>
+                    <th scope="col" class="col-name">项目</th>
+                    <th scope="col" class="col-num">总用量</th>
+                    <th scope="col" class="col-num">轮次</th>
+                    <th scope="col" class="col-num">占比</th>
+                  </tr>
+                </thead>
+                <tbody id="projects-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="sessions-title">
+            <div class="card-head">
+              <h2 class="card-title" id="sessions-title">用量最高的会话</h2>
+            </div>
+            <div class="table-wrap">
+              <table class="table" id="sessions-table">
+                <thead>
+                  <tr>
+                    <th scope="col" class="col-name">会话</th>
+                    <th scope="col" class="col-num">总用量</th>
+                    <th scope="col" class="col-num">轮次</th>
+                  </tr>
+                </thead>
+                <tbody id="sessions-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <p class="footnote" id="footnote"></p>
+        </div>
+      </section>
+
+      <!--
+        The persistent readout. It is the view's resting state: one click on the
+        panel shows this strip, a second click expands the full dashboard above
+        it. Keeping it in normal flow (rather than fixed) means the host's
+        `WebContentsView` bounds tracking needs no special case.
+      -->
+      <button type="button" class="compact" id="compact" aria-expanded="false">
+        <span class="compact-label">
+          <span class="compact-title">Token 用量</span>
+          <span class="compact-scope" id="compact-scope"></span>
+        </span>
+        <span class="compact-stats" id="compact-stats">
+          <span class="compact-stat">
+            <span class="compact-k">今日</span>
+            <span class="compact-v" id="c-today">—</span>
+          </span>
+          <span class="compact-stat">
+            <span class="compact-k">7 天</span>
+            <span class="compact-v" id="c-7">—</span>
+          </span>
+          <span class="compact-stat">
+            <span class="compact-k">30 天</span>
+            <span class="compact-v" id="c-30">—</span>
+          </span>
+          <span class="compact-stat compact-stat-total">
+            <span class="compact-k">总计</span>
+            <span class="compact-v" id="c-total">—</span>
+          </span>
+        </span>
+        <span class="compact-caret" aria-hidden="true">
+          <svg viewBox="0 0 16 16" width="13" height="13">
+            <path
+              d="M4 10l4-4 4 4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
+      </button>
+
+      <p class="status" id="status" role="status" hidden></p>
+    </main>
+
+    <script src="./usage.js"></script>
+  </body>
+</html>
